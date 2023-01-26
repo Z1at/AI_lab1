@@ -1,0 +1,533 @@
+{
+ "cells":[
+  {
+   "cell_type":"markdown",
+   "source":[
+    "# Распознавание активности человека на основе данных с мобильных сенсоров\n",
+    "\n",
+    "Необходимо по данным с мобильных сенсоров при помощи прикладных алгоритмов машинного обучения предсказать активность человека по шести классам движений:\n",
+    "* Движется по прямой\n",
+    "* Движется вверх (например, движение по лестнице вверх)\n",
+    "* Движется вниз (например, движение по лестнице вниз)\n",
+    "* Сидит\n",
+    "* Стоит\n",
+    "* Лежит\n",
+    "\n",
+    "## Сведения о наборе данных\n",
+    "Набор данных содержит записи датчиков со сматфонов (акселерометр и гироскоп с частотой дискретизации 50 Гц) от 30 участников, выполняющих следующие действия: ходьба, ходьба по лестнице, ходьба по лестнице, сидение, стояние и лежание. Данные были предварительно обработаны при помощи фильтров шума. Набор данных представлен Хорхе Л. Рейес-Ортисом.\n",
+    "\n",
+    "Признаки были извлечены из 3-х осевых необработанных сигналов акселерометра и гироскопа tAcc-XYZ и tGyro-XYZ. Эти сигналы были сняты с постоянной частотой 50 Гц. Затем были отфильтрованны с помощью медианного фильтра и низкочастотного фильтра Баттерворта 3-го порядка с частотой 20 Гц для удаления шумов. Аналогичным образом сигнал ускорения был разделен на сигналы ускорения тела и гравитации (`tBodyAcc-XYZ` и `tGravityAcc-XYZ`) с помощью другого низкочастотного фильтра Баттерворта с угловой частотой 0,3 Гц. Линейное ускорение тела и угловая скорость были использованы для получения сигналов \"рывка\" — (`tBodyAccJerk-XYZ` и `tBodyGyroJerk-XYZ`). Также величина этих трехмерных сигналов была расчитана с использованием евклидовой нормы — (`tBodyAccMag`, `tGravityAccMag`, `tBodyAccJerkMag`, `tBodyGyroMag`, `tBodyGyroJerkMag`). \n",
+    "\n",
+    "Наконец, к некоторым из этих сигналов было применено быстрое преобразование Фурье (БПФ), в результате чего получились `fBodyAcc-XYZ`, `fBodyAccJerk-XYZ`, `fBodyGyro-XYZ`, `fBodyAccJerkMag`, `fBodyGyroMag`, `fBodyGyroJerkMag`. (Обратите внимание на \"f\" для обозначения сигналов в частотной области). \n",
+    "\n",
+    "Набор переменных, которые были оценены по этим сигналам, следующий: \n",
+    "* mean(): Среднее значение\n",
+    "* std(): Стандартное отклонение\n",
+    "* mad(): Среднее абсолютное отклонение \n",
+    "* max(): Наибольшее значение в массиве\n",
+    "* min(): Наименьшее значение в массиве\n",
+    "* sma(): Область величины сигнала\n",
+    "* energy(): Мера энергии. Сумма квадратов, деленная на количество значений. \n",
+    "* iqr(): Интерквартильный размах \n",
+    "* entropy(): Энтропия сигнала\n",
+    "* arCoeff(): Коэффициенты авторегрессии с порядком Burg, равным 4\n",
+    "* correlation(): коэффициент корреляции между двумя сигналами\n",
+    "* maxInds(): индекс частотной составляющей с наибольшей величиной\n",
+    "* meanFreq(): средневзвешенное значение частотных компонент для получения средней частоты\n",
+    "* skewness(): перекос сигнала в частотной области \n",
+    "* kurtosis(): эксцесс сигнала в частотной области \n",
+    "* bandsEnergy(): Энергия частотного интервала в пределах 64 бинов БПФ каждого окна.\n",
+    "* angle(): Угол между векторами.\n",
+    "## Импорт библиотек\n",
+    "Первым делом импортируем необходимые библиотеки для работы с данными:"
+   ],
+   "attachments":{
+    
+   },
+   "metadata":{
+    "datalore":{
+     "node_id":"65baONV00WsOUl0mBEn7mB",
+     "type":"MD",
+     "hide_input_from_viewers":false,
+     "hide_output_from_viewers":false
+    }
+   }
+  },
+  {
+   "cell_type":"code",
+   "source":[
+    "import os\n",
+    "import numpy as np\n",
+    "import pandas as pd"
+   ],
+   "execution_count":1,
+   "outputs":[
+    
+   ],
+   "metadata":{
+    "datalore":{
+     "node_id":"TzA30C5txlPCx905qKUzmx",
+     "type":"CODE",
+     "hide_input_from_viewers":false,
+     "hide_output_from_viewers":false
+    }
+   }
+  },
+  {
+   "cell_type":"markdown",
+   "source":[
+    "## Считываем набор данных\n",
+    "\n",
+    "В прикладных задачах машинного обучения очень важен процесс извлечения признаков (feature extraction), в ходе которого данные интерпретируются в информативные признаки. Также этот процесс может называться проектирование признаков (feature engineering), это весьма трудоемкая и творческая задача. В рамках работы мы опустим эту часть и воспользуемся предобработанными данными. "
+   ],
+   "attachments":{
+    
+   },
+   "metadata":{
+    "datalore":{
+     "node_id":"nD59cMaNdT5dJig8Kb7R1X",
+     "type":"MD",
+     "hide_input_from_viewers":false,
+     "hide_output_from_viewers":false
+    }
+   }
+  },
+  {
+   "cell_type":"code",
+   "source":[
+    "def read_data(path, filename):\n",
+    "    return pd.read_csv(os.path.join(path, filename))\n",
+    "\n",
+    "df = read_data('\/data\/notebook_files', 'train.csv')\n",
+    "df.head()"
+   ],
+   "execution_count":2,
+   "outputs":[
+    {
+     "data":{
+      "text\/html":[
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "<\/style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th><\/th>\n",
+       "      <th>tBodyAcc-mean()-X<\/th>\n",
+       "      <th>tBodyAcc-mean()-Y<\/th>\n",
+       "      <th>tBodyAcc-mean()-Z<\/th>\n",
+       "      <th>tBodyAcc-std()-X<\/th>\n",
+       "      <th>tBodyAcc-std()-Y<\/th>\n",
+       "      <th>tBodyAcc-std()-Z<\/th>\n",
+       "      <th>tBodyAcc-mad()-X<\/th>\n",
+       "      <th>tBodyAcc-mad()-Y<\/th>\n",
+       "      <th>tBodyAcc-mad()-Z<\/th>\n",
+       "      <th>tBodyAcc-max()-X<\/th>\n",
+       "      <th>...<\/th>\n",
+       "      <th>fBodyBodyGyroJerkMag-kurtosis()<\/th>\n",
+       "      <th>angle(tBodyAccMean,gravity)<\/th>\n",
+       "      <th>angle(tBodyAccJerkMean),gravityMean)<\/th>\n",
+       "      <th>angle(tBodyGyroMean,gravityMean)<\/th>\n",
+       "      <th>angle(tBodyGyroJerkMean,gravityMean)<\/th>\n",
+       "      <th>angle(X,gravityMean)<\/th>\n",
+       "      <th>angle(Y,gravityMean)<\/th>\n",
+       "      <th>angle(Z,gravityMean)<\/th>\n",
+       "      <th>subject<\/th>\n",
+       "      <th>Activity<\/th>\n",
+       "    <\/tr>\n",
+       "  <\/thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0<\/th>\n",
+       "      <td>0.288585<\/td>\n",
+       "      <td>-0.020294<\/td>\n",
+       "      <td>-0.132905<\/td>\n",
+       "      <td>-0.995279<\/td>\n",
+       "      <td>-0.983111<\/td>\n",
+       "      <td>-0.913526<\/td>\n",
+       "      <td>-0.995112<\/td>\n",
+       "      <td>-0.983185<\/td>\n",
+       "      <td>-0.923527<\/td>\n",
+       "      <td>-0.934724<\/td>\n",
+       "      <td>...<\/td>\n",
+       "      <td>-0.710304<\/td>\n",
+       "      <td>-0.112754<\/td>\n",
+       "      <td>0.030400<\/td>\n",
+       "      <td>-0.464761<\/td>\n",
+       "      <td>-0.018446<\/td>\n",
+       "      <td>-0.841247<\/td>\n",
+       "      <td>0.179941<\/td>\n",
+       "      <td>-0.058627<\/td>\n",
+       "      <td>1<\/td>\n",
+       "      <td>STANDING<\/td>\n",
+       "    <\/tr>\n",
+       "    <tr>\n",
+       "      <th>1<\/th>\n",
+       "      <td>0.278419<\/td>\n",
+       "      <td>-0.016411<\/td>\n",
+       "      <td>-0.123520<\/td>\n",
+       "      <td>-0.998245<\/td>\n",
+       "      <td>-0.975300<\/td>\n",
+       "      <td>-0.960322<\/td>\n",
+       "      <td>-0.998807<\/td>\n",
+       "      <td>-0.974914<\/td>\n",
+       "      <td>-0.957686<\/td>\n",
+       "      <td>-0.943068<\/td>\n",
+       "      <td>...<\/td>\n",
+       "      <td>-0.861499<\/td>\n",
+       "      <td>0.053477<\/td>\n",
+       "      <td>-0.007435<\/td>\n",
+       "      <td>-0.732626<\/td>\n",
+       "      <td>0.703511<\/td>\n",
+       "      <td>-0.844788<\/td>\n",
+       "      <td>0.180289<\/td>\n",
+       "      <td>-0.054317<\/td>\n",
+       "      <td>1<\/td>\n",
+       "      <td>STANDING<\/td>\n",
+       "    <\/tr>\n",
+       "    <tr>\n",
+       "      <th>2<\/th>\n",
+       "      <td>0.279653<\/td>\n",
+       "      <td>-0.019467<\/td>\n",
+       "      <td>-0.113462<\/td>\n",
+       "      <td>-0.995380<\/td>\n",
+       "      <td>-0.967187<\/td>\n",
+       "      <td>-0.978944<\/td>\n",
+       "      <td>-0.996520<\/td>\n",
+       "      <td>-0.963668<\/td>\n",
+       "      <td>-0.977469<\/td>\n",
+       "      <td>-0.938692<\/td>\n",
+       "      <td>...<\/td>\n",
+       "      <td>-0.760104<\/td>\n",
+       "      <td>-0.118559<\/td>\n",
+       "      <td>0.177899<\/td>\n",
+       "      <td>0.100699<\/td>\n",
+       "      <td>0.808529<\/td>\n",
+       "      <td>-0.848933<\/td>\n",
+       "      <td>0.180637<\/td>\n",
+       "      <td>-0.049118<\/td>\n",
+       "      <td>1<\/td>\n",
+       "      <td>STANDING<\/td>\n",
+       "    <\/tr>\n",
+       "    <tr>\n",
+       "      <th>3<\/th>\n",
+       "      <td>0.279174<\/td>\n",
+       "      <td>-0.026201<\/td>\n",
+       "      <td>-0.123283<\/td>\n",
+       "      <td>-0.996091<\/td>\n",
+       "      <td>-0.983403<\/td>\n",
+       "      <td>-0.990675<\/td>\n",
+       "      <td>-0.997099<\/td>\n",
+       "      <td>-0.982750<\/td>\n",
+       "      <td>-0.989302<\/td>\n",
+       "      <td>-0.938692<\/td>\n",
+       "      <td>...<\/td>\n",
+       "      <td>-0.482845<\/td>\n",
+       "      <td>-0.036788<\/td>\n",
+       "      <td>-0.012892<\/td>\n",
+       "      <td>0.640011<\/td>\n",
+       "      <td>-0.485366<\/td>\n",
+       "      <td>-0.848649<\/td>\n",
+       "      <td>0.181935<\/td>\n",
+       "      <td>-0.047663<\/td>\n",
+       "      <td>1<\/td>\n",
+       "      <td>STANDING<\/td>\n",
+       "    <\/tr>\n",
+       "    <tr>\n",
+       "      <th>4<\/th>\n",
+       "      <td>0.276629<\/td>\n",
+       "      <td>-0.016570<\/td>\n",
+       "      <td>-0.115362<\/td>\n",
+       "      <td>-0.998139<\/td>\n",
+       "      <td>-0.980817<\/td>\n",
+       "      <td>-0.990482<\/td>\n",
+       "      <td>-0.998321<\/td>\n",
+       "      <td>-0.979672<\/td>\n",
+       "      <td>-0.990441<\/td>\n",
+       "      <td>-0.942469<\/td>\n",
+       "      <td>...<\/td>\n",
+       "      <td>-0.699205<\/td>\n",
+       "      <td>0.123320<\/td>\n",
+       "      <td>0.122542<\/td>\n",
+       "      <td>0.693578<\/td>\n",
+       "      <td>-0.615971<\/td>\n",
+       "      <td>-0.847865<\/td>\n",
+       "      <td>0.185151<\/td>\n",
+       "      <td>-0.043892<\/td>\n",
+       "      <td>1<\/td>\n",
+       "      <td>STANDING<\/td>\n",
+       "    <\/tr>\n",
+       "  <\/tbody>\n",
+       "<\/table>\n",
+       "<p>5 rows × 563 columns<\/p>\n",
+       "<\/div>"
+      ]
+     },
+     "metadata":{
+      
+     },
+     "output_type":"display_data"
+    }
+   ],
+   "metadata":{
+    "datalore":{
+     "node_id":"vpBrpkTQTOee0O87NtQUy4",
+     "type":"CODE",
+     "hide_input_from_viewers":false,
+     "hide_output_from_viewers":false
+    }
+   }
+  },
+  {
+   "cell_type":"markdown",
+   "source":[
+    "Теперь, загрузим полный набор данных и сохранить его под следующими четырьмя переменными:\n",
+    "\n",
+    "* `train_X`: признаки, используемые для обучения модели\n",
+    "* `train_y`: метки, используемые для обучения модели\n",
+    "* `test_X`: признаки, используемые для проверки модели\n",
+    "* `test_y`: метки, используемые для проверки модели"
+   ],
+   "attachments":{
+    
+   },
+   "metadata":{
+    "datalore":{
+     "node_id":"1OJVLWWQ1b55HKqquqaCpb",
+     "type":"MD",
+     "hide_input_from_viewers":false,
+     "hide_output_from_viewers":false
+    }
+   }
+  },
+  {
+   "cell_type":"code",
+   "source":[
+    "def load_dataset(label_dict):\n",
+    "    train_X = read_data('\/data\/notebook_files', 'train.csv').values[:,:-2]\n",
+    "    train_y = read_data('\/data\/notebook_files', 'train.csv')['Activity']\n",
+    "    train_y = train_y.map(label_dict).values\n",
+    "    test_X = read_data('\/data\/notebook_files', 'test.csv').values[:,:-2]\n",
+    "    test_y = read_data('\/data\/notebook_files', 'test.csv')\n",
+    "    test_y = test_y['Activity'].map(label_dict).values\n",
+    "    return(train_X, train_y, test_X, test_y)\n",
+    "label_dict = {'WALKING':0, 'WALKING_UPSTAIRS':1, 'WALKING_DOWNSTAIRS':2, 'SITTING':3, 'STANDING':4, 'LAYING':5}\n",
+    "train_X, train_y, test_X, test_y = load_dataset(label_dict)"
+   ],
+   "execution_count":11,
+   "outputs":[
+    
+   ],
+   "metadata":{
+    "datalore":{
+     "node_id":"umrZvD6ekBlIjjgq1F4hDE",
+     "type":"CODE",
+     "hide_input_from_viewers":false,
+     "hide_output_from_viewers":false
+    }
+   }
+  },
+  {
+   "cell_type":"markdown",
+   "source":[
+    "## Выбор модели\n",
+    "\n",
+    "Импортируйте выбранную вами модель из библиотеки `sklearn` и инициализируйте её в объект `model`:\n",
+    "\n",
+    "Также необходимо выбрать **несколько** моделей ML для сравнения полученных результатов."
+   ],
+   "attachments":{
+    
+   },
+   "metadata":{
+    "datalore":{
+     "node_id":"rzFpETjrvFpl2hD2bD7jYC",
+     "type":"MD",
+     "hide_input_from_viewers":false,
+     "hide_output_from_viewers":false
+    }
+   }
+  },
+  {
+   "cell_type":"code",
+   "source":[
+    "# from sklearn.модель import название\n",
+    "\n",
+    "# ниже замените None на инициализацию вашей модели\n",
+    "model = None    "
+   ],
+   "execution_count":null,
+   "outputs":[
+    
+   ],
+   "metadata":{
+    "datalore":{
+     "node_id":"YJ9zPxZwd9nVxkWVvE1Ua9",
+     "type":"CODE",
+     "hide_input_from_viewers":false,
+     "hide_output_from_viewers":false
+    }
+   }
+  },
+  {
+   "cell_type":"markdown",
+   "source":[
+    "Опишите вашу мотивацию по выбору модели. Какие гиперпараметры есть у выбранной вами модели? За что они отвечают? На что влияют?"
+   ],
+   "attachments":{
+    
+   },
+   "metadata":{
+    "datalore":{
+     "node_id":"oldNCMdBVzl09OIOauCL7P",
+     "type":"MD",
+     "hide_input_from_viewers":false,
+     "hide_output_from_viewers":false
+    }
+   }
+  },
+  {
+   "cell_type":"markdown",
+   "source":[
+    "## Обучение модели\n",
+    "\n",
+    "Обучите модель, используя признаки из обучающего набора (`train_X`) и метки в качестве базовой истины (`train_y`)."
+   ],
+   "attachments":{
+    
+   },
+   "metadata":{
+    "datalore":{
+     "node_id":"HhCKE5nr9ZzWXIefwTXzuq",
+     "type":"MD",
+     "hide_input_from_viewers":false,
+     "hide_output_from_viewers":false
+    }
+   }
+  },
+  {
+   "cell_type":"code",
+   "source":[
+    "model.fit(train_X, train_y)"
+   ],
+   "execution_count":null,
+   "outputs":[
+    
+   ],
+   "metadata":{
+    "datalore":{
+     "node_id":"Dvg6HvHJDHHEIHEdXFnrnh",
+     "type":"CODE",
+     "hide_input_from_viewers":false,
+     "hide_output_from_viewers":false
+    }
+   }
+  },
+  {
+   "cell_type":"markdown",
+   "source":[
+    "## Оценка модели\n",
+    "Используйте обученную модель для прогнозирования активности движения, используя признаки из тестового набора (`test_X`). Прогнозы сохраните в списке `yhat`."
+   ],
+   "attachments":{
+    
+   },
+   "metadata":{
+    "datalore":{
+     "node_id":"RlwxdG1csNqjt5MwA3xRdd",
+     "type":"MD",
+     "hide_input_from_viewers":false,
+     "hide_output_from_viewers":false
+    }
+   }
+  },
+  {
+   "cell_type":"code",
+   "source":[
+    "yhat = model.predict(test_X)\n",
+    "yhat"
+   ],
+   "execution_count":null,
+   "outputs":[
+    
+   ],
+   "metadata":{
+    "datalore":{
+     "node_id":"6co7FcTwbjXUcBYdxRkCmn",
+     "type":"CODE",
+     "hide_input_from_viewers":false,
+     "hide_output_from_viewers":false
+    }
+   }
+  },
+  {
+   "cell_type":"markdown",
+   "source":[
+    "Выведите отчет о классификации, сравнив предсказания (`yhat`) с базовой истиной (`test_y`).\n",
+    "\n",
+    "В чем разница между показателями `precision` и `recall`? Что такое показатель `F1`?\n",
+    "\n",
+    "Попробуйте несколько гиперпараметров и несколько моделей. Сравните полученный результат."
+   ],
+   "attachments":{
+    
+   },
+   "metadata":{
+    "datalore":{
+     "node_id":"h7NEM5RemUKlwTZEAMA5WQ",
+     "type":"MD",
+     "hide_input_from_viewers":false,
+     "hide_output_from_viewers":false
+    }
+   }
+  },
+  {
+   "cell_type":"code",
+   "source":[
+    "from sklearn.metrics import classification_report\n",
+    "target_names = ['Walking', 'Walking Upstairs', 'Walking Downstairs', 'Sitting', 'Standing', 'Laying']\n",
+    "\n",
+    "print(classification_report(test_y, yhat, target_names=target_names))"
+   ],
+   "execution_count":null,
+   "outputs":[
+    
+   ],
+   "metadata":{
+    "datalore":{
+     "node_id":"O1n5AL0m65kfoRsQB5z71P",
+     "type":"CODE",
+     "hide_input_from_viewers":false,
+     "hide_output_from_viewers":false
+    }
+   }
+  }
+ ],
+ "metadata":{
+  "kernelspec":{
+   "display_name":"Python",
+   "language":"python",
+   "name":"python"
+  },
+  "datalore":{
+   "version":1,
+   "computation_mode":"JUPYTER",
+   "packages":[
+    
+   ]
+  }
+ },
+ "nbformat":4,
+ "nbformat_minor":4
+}
